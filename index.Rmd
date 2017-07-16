@@ -1,0 +1,153 @@
+---
+title: "24 game solutions generator with rPython package"
+author: "Eric Yang"
+date: "7/15/2017"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rPython)
+python.load("24.py")
+```
+
+The 24 Game is an arithmetical card game in which the objective is to find a way to manipulate four integers so that the end result is 24. For example, for the card with the numbers 4, 7, 8, 8, a possible solution is ( 7 - ( 8 / 8) ) * 4.
+
+If you are not familar with this game, check out <a href="https://en.wikipedia.org/wiki/24_Game" target="_blank">this Wikipedia page</a>.
+
+## Rules
+
+The original version of 24 is played with an ordinary deck of playing cards with all the face cards removed. The aces are taken to have the value 1 and the basic game proceeds by having 4 cards dealt and the first player that can achieve the number 24 exactly using only allowed operations (addition, subtraction, multiplication, division, and parentheses) wins the hand. Some advanced players allow exponentiation, roots, logarithms, and other operations.
+
+For short games of 24, once a hand is won, the cards go to the player that won. If everyone gives up, the cards are shuffled back into the deck. The game ends when the deck is exhausted, and the player with the most cards wins.
+
+Longer games of 24 proceed by first dealing the cards out to the players, each of whom contributes to each set of cards exposed. A player who solves a set takes its cards and replenishes their pile, after the fashion of War. Players are eliminated when they no longer have any cards.
+
+A slightly different version includes the face cards, Jack, Queen, and King, giving them the values 11, 12, and 13, respectively.
+
+## The Solution Generator
+
+```{r, echo=FALSE}
+inputPanel(
+  selectInput("card1", label = "Card #1",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
+  selectInput("card2", label = "Card #2",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
+  selectInput("card3", label = "Card #3",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 7),
+  selectInput("card4", label = "Card #4",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 8)
+
+)
+
+renderTable({
+  python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))},rownames= TRUE)
+```
+
+## Full solutions generator
+
+## Why rPython?
+
+## The idea
+
+## Steps
+
+## R Code
+
+```{r eval=FALSE}
+library(rPython)
+python.load("24.py")
+
+inputPanel(
+  selectInput("card1", label = "Card #1",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
+  selectInput("card2", label = "Card #2",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
+  selectInput("card3", label = "Card #3",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 7),
+  selectInput("card4", label = "Card #4",
+              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 8)
+)
+
+renderTable({
+  python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))},rownames= TRUE)
+```
+
+## Python Code
+
+```{python eval=FALSE}
+import itertools as it
+
+max_card = 13
+cards = [x+1 for x in list(range(max_card))]
+allcombos = list(it.product(cards,repeat=4))
+allhands = list(set([tuple(sorted(list(x))) for x in allcombos]))
+
+def f1(x,y): return x + y
+def f2(x,y): return x * y
+def f3(x,y): return x - y
+def f4(x,y): return y - x
+def f5(x,y):
+    if y == 0: return 0
+    else: return x / y
+def f6(x,y):
+    if x == 0: return 0
+    else: return y / x
+    
+funlist = [f1,f2,f3,f4,f5,f6]
+symlist = [["+",-1],["*",-1],["-",0],["-",1],["/",0],["/",1]]
+
+funcombos = []
+for i in funlist:
+    for j in funlist:
+        for k in funlist:
+            funcombos += [[i,j,k]]
+
+def printsol(a,b,func):
+    if symlist[funlist.index(func)][1] == 1:
+        arg = b+symlist[funlist.index(func)][0]+a
+    elif symlist[funlist.index(func)][1] == 0:
+        arg = a+symlist[funlist.index(func)][0]+b
+    else :
+        arg = min(a,b)+symlist[funlist.index(func)][0]+max(a,b)
+    return "("+arg+")"
+
+def convert(solution):
+    num = [str(x) for x in solution[0]]
+    func = solution[1]
+    type = solution[2]
+    if type == 1:
+        return printsol(printsol(printsol(num[0],num[1],func[0]),num[2],func[1]),num[3],func[2])
+    else:
+        return printsol(printsol(num[0],num[1],func[0]),printsol(num[2],num[3],func[1]),func[2])
+
+def get_solutions(hand):
+    combos = list(set(list(it.permutations(hand))))
+
+    solutions = []
+    output = []
+
+    for i in combos:
+        for j in funcombos:
+            if j[2](j[1](j[0](i[0],i[1]),i[2]),i[3]) == 24:
+                solutions += [[i,j,1]]
+            if j[2](j[0](i[0], i[1]), j[1](i[2], i[3])) == 24:
+                solutions += [[i,j,2]]
+
+    for i in solutions:
+        output += [convert(i)[1:-1]]
+
+    return list(set(output))
+
+def all_solutions():
+    solutions = []
+    for i in allhands:
+        solutions += [[i,get_solutions(i)]]
+    return solutions
+
+```
+
+
+
+
