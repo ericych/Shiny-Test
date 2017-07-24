@@ -9,8 +9,14 @@ runtime: shiny
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(rPython)
+library(shinyjs)
 python.load("24.py")
 ```
+
+This document serves as a testing app for my <a href="/shiny" target="_blank">Shiny server</a> and <a href="/rstudio" target="_blank">Rstudio server.</a> If you like it, check out the <a href="https://github.com/ericych/Shiny-Test" target="_blank">Github page here</a>.
+
+## The 24 Game
+
 
 The 24 Game is an arithmetical card game in which the objective is to find a way to manipulate four integers so that the end result is 24. For example, for the card with the numbers 4, 7, 8, 8, a possible solution is ( 7 - ( 8 / 8) ) * 4.
 
@@ -29,25 +35,73 @@ A slightly different version includes the face cards, Jack, Queen, and King, giv
 ## The Solution Generator
 
 ```{r, echo=FALSE}
-inputPanel(
-  selectInput("card1", label = "Card #1",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
-  selectInput("card2", label = "Card #2",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
-  selectInput("card3", label = "Card #3",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 7),
-  selectInput("card4", label = "Card #4",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 8)
+
+shinyApp(
+
+  ui = fluidPage(
+  
+          useShinyjs(),
+          
+          sidebarPanel(
+              selectInput("card1", label = "Card #1",
+                          choices = 1:13, selected = sample(1:13,1)),
+              selectInput("card2", label = "Card #2",
+                          choices = 1:13, selected = sample(1:13,1)),
+              selectInput("card3", label = "Card #3",
+                          choices = 1:13, selected = sample(1:13,1)),
+              selectInput("card4", label = "Card #4",
+                          choices = 1:13, selected = sample(1:13,1)),
+              style = "overflow:visible"
+          ),
+          
+          mainPanel(
+              actionButton("rand", "Get a random hand"),
+              hr(),
+              textOutput("text"),
+              hr(),
+              actionButton("show", "Show Solution"),
+              hr(),
+              hidden(tableOutput("table")),
+              style = "overflow-y:auto; max-height:400px")
+          ),
+
+  server = function(input,output,session){
+    
+              output$text <- renderText(paste(
+                  length(python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))),
+                  "solution(s) found"))
+    
+              output$table <- renderTable(
+                  {python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))},
+                  rownames=TRUE,
+                  colnames = FALSE)
+              
+              observeEvent(input$show, {
+                  toggle("table")
+                  if (input$show %% 2 == 1){updateActionButton(session,"show",label = "Hide Solutions")}
+                  else {updateActionButton(session,"show",label = "Show Solutions")}
+              })
+              
+              observeEvent(input$rand, {
+                  newHand = sample(1:13,4,replace = T)
+                  updateSelectInput(session,"card1",selected = newHand[1])
+                  updateSelectInput(session,"card2",selected = newHand[2]) 
+                  updateSelectInput(session,"card3",selected = newHand[3]) 
+                  updateSelectInput(session,"card4",selected = newHand[4]) 
+              })
+          },
+  
+  options = list(overflow = "visible")
 
 )
 
-renderTable({
-  python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))},rownames= TRUE)
 ```
 
 ## Full solutions generator
 
 ## Why rPython?
+
+I can absolutely write the code in R, however in order to test the functionality of the ubuntu server and the code was orignially writen in Python, I have the idea of wrapping the Python in R code. It turns out doing pretty good. Also the R markdown document provides a perfect enviroment to embed Python code along with R code. So why not doing both? In the future, I will tend to do more blog posting with this style. It is really cool to do the R front-end + Python back-end. Another option would be a flask server. However, in that case, calling r functions and generating r plots would be much more complicated.
 
 ## The idea
 
@@ -56,22 +110,66 @@ renderTable({
 ## R Code
 
 ```{r eval=FALSE}
+
 library(rPython)
+library(shinyjs)
 python.load("24.py")
 
-inputPanel(
-  selectInput("card1", label = "Card #1",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
-  selectInput("card2", label = "Card #2",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 4),
-  selectInput("card3", label = "Card #3",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 7),
-  selectInput("card4", label = "Card #4",
-              choices = c(1,2,3,4,5,6,7,8,9,10,11,12,13), selected = 8)
-)
+shinyApp(
 
-renderTable({
-  python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))},rownames= TRUE)
+  ui = fluidPage(
+  
+          useShinyjs(),
+          
+          sidebarPanel(
+              selectInput("card1", label = "Card #1",
+                          choices = 1:13, selected = sample(1:13,1)),
+              selectInput("card2", label = "Card #2",
+                          choices = 1:13, selected = sample(1:13,1)),
+              selectInput("card3", label = "Card #3",
+                          choices = 1:13, selected = sample(1:13,1)),
+              selectInput("card4", label = "Card #4",
+                          choices = 1:13, selected = sample(1:13,1))
+          ),
+          
+          mainPanel(
+              actionButton("rand", "Get a random hand"),
+              hr(),
+              textOutput("text"),
+              hr(),
+              actionButton("show", "Show Solution"),
+              hr(),
+              hidden(tableOutput("table")),
+              style = "overflow-y:auto; max-height:400px")
+          ),
+
+  server = function(input,output,session){
+    
+              output$text <- renderText(paste(
+                  length(python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))),
+                  "solution(s) found"))
+    
+              output$table <- renderTable(
+                  {python.call("get_solutions",as.numeric(c(input$card1,input$card2,input$card3,input$card4)))},
+                  rownames=TRUE,
+                  colnames = FALSE)
+              
+              observeEvent(input$show, {
+                  toggle("table")
+                  if (input$show %% 2 == 1){updateActionButton(session,"show",label = "Hide Solutions")}
+                  else {updateActionButton(session,"show",label = "Show Solutions")}
+              })
+              
+              observeEvent(input$rand, {
+                  newHand = sample(1:13,4,replace = T)
+                  updateSelectInput(session,"card1",selected = newHand[1])
+                  updateSelectInput(session,"card2",selected = newHand[2]) 
+                  updateSelectInput(session,"card3",selected = newHand[3]) 
+                  updateSelectInput(session,"card4",selected = newHand[4]) 
+              })
+          }
+  
+)
 ```
 
 ## Python Code
@@ -147,7 +245,3 @@ def all_solutions():
     return solutions
 
 ```
-
-
-
-
